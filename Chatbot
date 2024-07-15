@@ -1,0 +1,148 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyMix2oEtXjKv5selB4vsvpE",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Areeba-ai/Rule-based-chatbot/blob/main/Chatbot\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "lo77rzbVSJQ_",
+        "outputId": "256791a2-894f-485e-ea8d-b53a679702e9"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Welcome to the enhanced rule-based chatbot! Type 'exit' to end the conversation.\n",
+            "You: what is your name\n",
+            "Chatbot: I am a rule-based chatbot created to assist you.\n"
+          ]
+        }
+      ],
+      "source": [
+        "import re\n",
+        "from datetime import datetime\n",
+        "import requests\n",
+        "import pytz\n",
+        "\n",
+        "# Replace with your actual API keys\n",
+        "WEATHER_API_KEY = 'your_openweathermap_api_key'\n",
+        "NEWS_API_KEY = 'your_newsapi_key'\n",
+        "WEATHER_BASE_URL = 'http://api.openweathermap.org/data/2.5/weather'\n",
+        "NEWS_BASE_URL = 'https://newsapi.org/v2/top-headlines'\n",
+        "\n",
+        "def get_weather(location):\n",
+        "    try:\n",
+        "        response = requests.get(WEATHER_BASE_URL, params={'q': location, 'appid': WEATHER_API_KEY, 'units': 'metric'})\n",
+        "        data = response.json()\n",
+        "        if data['cod'] == 200:\n",
+        "            weather = data['weather'][0]['description']\n",
+        "            temperature = data['main']['temp']\n",
+        "            return f\"The weather in {location} is currently {weather} with a temperature of {temperature}°C.\"\n",
+        "        else:\n",
+        "            return \"Sorry, I couldn't find the weather for that location.\"\n",
+        "    except Exception as e:\n",
+        "        return \"Sorry, I'm unable to fetch the weather at the moment.\"\n",
+        "\n",
+        "def get_time_in_gujranwala():\n",
+        "    try:\n",
+        "        gujranwala_tz = pytz.timezone('Asia/Karachi')\n",
+        "        gujranwala_time = datetime.now(gujranwala_tz)\n",
+        "        return gujranwala_time.strftime('%Y-%m-%d %H:%M:%S')\n",
+        "    except Exception as e:\n",
+        "        return \"Sorry, I couldn't fetch the time for Gujranwala.\"\n",
+        "\n",
+        "def get_current_affairs():\n",
+        "    try:\n",
+        "        response = requests.get(NEWS_BASE_URL, params={'country': 'us', 'apiKey': NEWS_API_KEY})\n",
+        "        data = response.json()\n",
+        "        if data['status'] == 'ok':\n",
+        "            articles = data['articles'][:5]  # Get the top 5 articles\n",
+        "            news_summary = \"\\n\".join([f\"{i+1}. {article['title']}\" for i, article in enumerate(articles)])\n",
+        "            return f\"Here are the top current affairs:\\n{news_summary}\"\n",
+        "        else:\n",
+        "            return \"Sorry, I couldn't fetch the current affairs at the moment.\"\n",
+        "    except Exception as e:\n",
+        "        return \"Sorry, I'm unable to fetch the current affairs at the moment.\"\n",
+        "\n",
+        "def match_pattern(user_input, patterns):\n",
+        "    for pattern, response in patterns.items():\n",
+        "        match = re.match(pattern, user_input, re.IGNORECASE)\n",
+        "        if match:\n",
+        "            return response.format(*match.groups())\n",
+        "    return None\n",
+        "\n",
+        "def get_response(user_input):\n",
+        "    patterns = {\n",
+        "        r'hello|hi|hey': \"Hello! How can I assist you today?\",\n",
+        "        r'bye|goodbye|see you': \"Goodbye! Have a great day!\",\n",
+        "        r'what is your name\\??': \"I am a rule-based chatbot created to assist you.\",\n",
+        "        r'how are you\\??': \"I'm just a program, but I'm here to help you!\",\n",
+        "        r'tell me a joke': \"Why don’t scientists trust atoms? Because they make up everything!\",\n",
+        "        r'what can you do\\??': \"I can respond to greetings, tell jokes, tell you the current time, provide weather information, and update you on current affairs.\",\n",
+        "        r'current time in Gujranwala': f\"The current time in Gujranwala is {get_time_in_gujranwala()}.\",\n",
+        "        r'weather in (\\w+)': get_weather,\n",
+        "        r'location': \"I am a virtual assistant and do not have a physical location.\",\n",
+        "        r'help': \"Sure, I can help! Ask me anything or type 'what can you do?' to see my capabilities.\",\n",
+        "        r'current affairs|news': get_current_affairs\n",
+        "    }\n",
+        "\n",
+        "    response = match_pattern(user_input, patterns)\n",
+        "    if response:\n",
+        "        if callable(response):\n",
+        "            match = re.match(r'weather in (\\w+)', user_input, re.IGNORECASE)\n",
+        "            if match:\n",
+        "                location = match.group(1)\n",
+        "                return response(location)\n",
+        "            elif user_input.lower() in ['current affairs', 'news']:\n",
+        "                return response()\n",
+        "        else:\n",
+        "            return response\n",
+        "    else:\n",
+        "        return \"I'm sorry, I didn't understand that. Can you please rephrase?\"\n",
+        "\n",
+        "def chatbot():\n",
+        "    print(\"Welcome to the enhanced rule-based chatbot! Type 'exit' to end the conversation.\")\n",
+        "    while True:\n",
+        "        user_input = input(\"You: \")\n",
+        "        if user_input.lower() == 'exit':\n",
+        "            print(\"Chatbot: Goodbye! Have a great day!\")\n",
+        "            break\n",
+        "        response = get_response(user_input)\n",
+        "        print(f\"Chatbot: {response}\")\n",
+        "\n",
+        "# Run the chatbot\n",
+        "if __name__ == \"__main__\":\n",
+        "    chatbot()"
+      ]
+    }
+  ]
+}
